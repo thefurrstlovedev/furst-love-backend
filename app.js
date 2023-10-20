@@ -20,7 +20,7 @@ const app = express();
 
 app.use(morgan("dev")); // Used for logging all request in console
 
-const endpointSecret = "whsec_l9vsEUIxCWwjXysMekKqrO54xvEqdrUn";
+const endpointSecret = "whsec_mmRVPOhSmP0SVuBrmVgzt0NSE2fDX3Hi";
 app.use("/webhook", express.raw({ type: "*/*" }));
 
 app.post(
@@ -238,8 +238,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.get("/", [verifyAccessToken, isAdmin], async (req, res, next) => {
-  res.send("Hello from server");
+app.get("/health", async (req, res, next) => {
+  res.send("🚀🚀 I'm flyingg!!! 🚀🚀");
 });
 
 app.use("/api/v1/auth", AuthRoute); // Mapping all routes definded under AuthRoute to /auth
