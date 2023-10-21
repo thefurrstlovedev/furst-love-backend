@@ -1,5 +1,6 @@
 const Cart = require("../Models/CartModel");
 const Coupon = require("../Models/CouponModel");
+const Order = require("../Models/OrderModel");
 const createError = require("http-errors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -12,7 +13,15 @@ module.exports = {
 
       if (couponId) {
         const doesExists = await Coupon.findOne({ coupon: couponId });
-        if (doesExists != null && doesExists.isEnabled === true) {
+        const isCouponUsed = await Order.findOne({
+          couponId: couponId,
+          user: req.user._id,
+        }).lean();
+        if (
+          doesExists != null &&
+          doesExists.isEnabled === true &&
+          !isCouponUsed
+        ) {
           availableDiscount = doesExists.discount;
         }
       }

@@ -1,4 +1,5 @@
 const Cart = require("../Models/CartModel");
+const Order = require("../Models/OrderModel");
 const Coupon = require("../Models/CouponModel");
 const createError = require("http-errors");
 const { createCartItem } = require("../Validators/CartValidation");
@@ -47,7 +48,16 @@ module.exports = {
 
       if (couponId) {
         const doesExists = await Coupon.findOne({ coupon: couponId });
-        if (doesExists != null && doesExists.isEnabled === true) {
+        const isCouponUsed = await Order.findOne({
+          couponId: couponId,
+          user: req.user._id,
+        }).lean();
+
+        if (
+          doesExists != null &&
+          doesExists.isEnabled === true &&
+          !isCouponUsed
+        ) {
           availableDiscount = doesExists.discount;
         }
       }
