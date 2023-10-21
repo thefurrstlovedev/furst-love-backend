@@ -6,9 +6,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 module.exports = {
   checkout: async (req, res, next) => {
     try {
-      console.log(req.body);
       const { couponId } = req.body;
-      console.log(couponId);
 
       let availableDiscount = 0;
 
@@ -232,9 +230,15 @@ module.exports = {
 
   config: async (req, res, next) => {
     try {
-      res.send({
-        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-      });
+      if (req.user.addresses.length === 0) {
+        throw createError.NotAcceptable(
+          "Oops\nPlease add default shipping address in account page"
+        );
+      } else {
+        res.send({
+          publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+        });
+      }
     } catch (error) {
       if (error.isJoi == true) error.status = 422;
       next(error);

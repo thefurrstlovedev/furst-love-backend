@@ -188,6 +188,7 @@ module.exports = {
         cart[0].taxAmount = Math.round(taxAmount);
         cart[0].totalPayable = Math.round(cart[0].cartTotalAmount + taxAmount);
         if (
+          req.user.addresses.length <= 0 ||
           req.user.addresses[0].country.toString().toLowerCase() != "luxembourg"
         ) {
           const shippingRate = 10.65;
