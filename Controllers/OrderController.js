@@ -20,7 +20,6 @@ module.exports = {
   getAllOrders: async (req, res, next) => {
     try {
       const orders = await Order.find().lean();
-
       res.send(orders);
     } catch (error) {
       next(error);
