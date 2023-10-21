@@ -74,9 +74,7 @@ module.exports = {
         },
         {
           $addFields: {
-            "cartItems.petCount": {
-              $subtract: [{ $toInt: "$cartItems.petCount" }, 1],
-            }, // Subtract 1 from petCount
+            "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
           },
         },
 
@@ -97,7 +95,9 @@ module.exports = {
                             {
                               $arrayElemAt: [
                                 "$cartItems.product.prices",
-                                "$cartItems.petCount",
+                                {
+                                  $subtract: ["$cartItems.petCount", 1],
+                                },
                               ],
                             },
                             "$cartItems.product.discount",
@@ -118,7 +118,9 @@ module.exports = {
                   {
                     $arrayElemAt: [
                       "$cartItems.product.prices",
-                      "$cartItems.petCount",
+                      {
+                        $subtract: ["$cartItems.petCount", 1],
+                      },
                     ],
                   },
                 ],

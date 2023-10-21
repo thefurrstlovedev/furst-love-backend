@@ -82,9 +82,7 @@ app.post(
               },
               {
                 $addFields: {
-                  "cartItems.petCount": {
-                    $subtract: [{ $toInt: "$cartItems.petCount" }, 1],
-                  }, // Subtract 1 from petCount
+                  "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
                 },
               },
 
@@ -105,7 +103,9 @@ app.post(
                                   {
                                     $arrayElemAt: [
                                       "$cartItems.product.prices",
-                                      "$cartItems.petCount",
+                                      {
+                                        $subtract: ["$cartItems.petCount", 1],
+                                      },
                                     ],
                                   },
                                   "$cartItems.product.discount",
@@ -126,7 +126,9 @@ app.post(
                         {
                           $arrayElemAt: [
                             "$cartItems.product.prices",
-                            "$cartItems.petCount",
+                            {
+                              $subtract: ["$cartItems.petCount", 1],
+                            },
                           ],
                         },
                       ],
