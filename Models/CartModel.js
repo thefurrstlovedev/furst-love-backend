@@ -12,7 +12,7 @@ const CartSchema = new mongoose.Schema(
           required: true,
         },
         petCount: {
-          type: String,
+          type: Number,
           required: true,
         },
         petImages: {

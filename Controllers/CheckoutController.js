@@ -37,6 +37,13 @@ module.exports = {
         {
           $unwind: "$cartItems.product",
         },
+        {
+          $addFields: {
+            "cartItems.petCount": {
+              $subtract: [{ $toInt: "$cartItems.petCount" }, 1],
+            }, // Subtract 1 from petCount
+          },
+        },
 
         {
           $addFields: {
@@ -53,7 +60,10 @@ module.exports = {
                         {
                           $multiply: [
                             {
-                              $arrayElemAt: ["$cartItems.product.prices", 0],
+                              $arrayElemAt: [
+                                "$cartItems.product.prices",
+                                "$cartItems.petCount",
+                              ],
                             },
                             "$cartItems.product.discount",
                           ],
@@ -71,7 +81,10 @@ module.exports = {
                 $multiply: [
                   "$cartItems.quantity",
                   {
-                    $arrayElemAt: ["$cartItems.product.prices", 0],
+                    $arrayElemAt: [
+                      "$cartItems.product.prices",
+                      "$cartItems.petCount",
+                    ],
                   },
                 ],
               },
@@ -178,14 +191,12 @@ module.exports = {
         const searchedCustomer = await stripe.customers.search({
           query: `metadata['userId']:'${req.user._id.toString()}'`,
         });
-        console.log("uptil this it works");
-        console.log(searchedCustomer);
+
         let customerObj = null;
 
         if (searchedCustomer["data"].length > 0) {
           console.log("Returning Customer");
           customerObj = searchedCustomer["data"][0];
-          console.log(customerObj);
         } else {
           console.log("Creating New stripe customer");
           const customer = await stripe.customers.create({

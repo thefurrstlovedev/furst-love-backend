@@ -72,6 +72,13 @@ module.exports = {
         {
           $unwind: "$cartItems.product",
         },
+        {
+          $addFields: {
+            "cartItems.petCount": {
+              $subtract: [{ $toInt: "$cartItems.petCount" }, 1],
+            }, // Subtract 1 from petCount
+          },
+        },
 
         {
           $addFields: {
@@ -88,7 +95,10 @@ module.exports = {
                         {
                           $multiply: [
                             {
-                              $arrayElemAt: ["$cartItems.product.prices", 0],
+                              $arrayElemAt: [
+                                "$cartItems.product.prices",
+                                "$cartItems.petCount",
+                              ],
                             },
                             "$cartItems.product.discount",
                           ],
@@ -106,7 +116,10 @@ module.exports = {
                 $multiply: [
                   "$cartItems.quantity",
                   {
-                    $arrayElemAt: ["$cartItems.product.prices", 0],
+                    $arrayElemAt: [
+                      "$cartItems.product.prices",
+                      "$cartItems.petCount",
+                    ],
                   },
                 ],
               },
@@ -153,6 +166,7 @@ module.exports = {
           $project: {
             "cartItems.quantity": 1,
             "cartItems._id": 1,
+            "cartItems.petCount": 1,
             "cartItems.product._id": 1,
             "cartItems.product.name": 1,
             "cartItems.product.discount": 1,

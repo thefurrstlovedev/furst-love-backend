@@ -45,17 +45,17 @@ app.post(
     switch (event.type) {
       case "payment_intent.created":
         const paymentIntentCreated = event.data.object;
-        console.log(paymentIntentCreated);
+        console.log(`Payment Intent Created ${paymentIntentCreated["id"]}`);
+
         break;
 
       case "payment_intent.succeeded":
         const paymentIntentSucceeded = event.data.object;
-        console.log(paymentIntentSucceeded);
 
         stripe.customers
           .retrieve(paymentIntentSucceeded.customer)
           .then(async (customer) => {
-            console.log(`💰💰 received`);
+            console.log(`Here comes the 💰💰💰💰💰💰`);
             const localUser = await User.findOne({
               _id: customer.metadata.userId,
             });
@@ -80,6 +80,13 @@ app.post(
               {
                 $unwind: "$cartItems.product",
               },
+              {
+                $addFields: {
+                  "cartItems.petCount": {
+                    $subtract: [{ $toInt: "$cartItems.petCount" }, 1],
+                  }, // Subtract 1 from petCount
+                },
+              },
 
               {
                 $addFields: {
@@ -98,7 +105,7 @@ app.post(
                                   {
                                     $arrayElemAt: [
                                       "$cartItems.product.prices",
-                                      0,
+                                      "$cartItems.petCount",
                                     ],
                                   },
                                   "$cartItems.product.discount",
@@ -117,7 +124,10 @@ app.post(
                       $multiply: [
                         "$cartItems.quantity",
                         {
-                          $arrayElemAt: ["$cartItems.product.prices", 0],
+                          $arrayElemAt: [
+                            "$cartItems.product.prices",
+                            "$cartItems.petCount",
+                          ],
                         },
                       ],
                     },
