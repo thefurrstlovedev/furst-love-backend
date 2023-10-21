@@ -15,12 +15,12 @@ const ProductRoute = require("./Routes/ProductRoute");
 const CartRoute = require("./Routes/CartRoute");
 const CouponRoute = require("./Routes/CouponRoute");
 const CheckoutRoute = require("./Routes/CheckoutRoute");
+const OrderRoute = require("./Routes/OrderRoute");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 
 app.use(morgan("dev")); // Used for logging all request in console
 
-const endpointSecret = "whsec_mmRVPOhSmP0SVuBrmVgzt0NSE2fDX3Hi";
 app.use("/webhook", express.raw({ type: "*/*" }));
 
 app.post(
@@ -32,7 +32,11 @@ app.post(
     let event;
 
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.ENDPOINT_SECRET
+      );
     } catch (err) {
       res.status(400).send(`Webhook Error: ${err.message}`);
       return;
@@ -251,6 +255,7 @@ app.use("/api/v1/cart", CartRoute);
 app.use("/api/v1/coupon", CouponRoute);
 app.use("/api/v1/buy", CheckoutRoute);
 
+app.use("/api/v1/order", OrderRoute);
 app.use(async (req, res, next) => {
   next(createError.NotFound("This route does not exists"));
 });
