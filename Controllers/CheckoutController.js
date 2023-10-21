@@ -178,12 +178,16 @@ module.exports = {
         const searchedCustomer = await stripe.customers.search({
           query: `metadata['userId']:'${req.user._id.toString()}'`,
         });
-
+        console.log("uptil this it works");
+        console.log(searchedCustomer);
         let customerObj = null;
 
-        if (searchedCustomer["data"] != []) {
-          customerObj = searchedCustomer["data"];
+        if (searchedCustomer["data"].length > 0) {
+          console.log("Returning Customer");
+          customerObj = searchedCustomer["data"][0];
+          console.log(customerObj);
         } else {
+          console.log("Creating New stripe customer");
           const customer = await stripe.customers.create({
             metadata: {
               userId: req.user._id.toString(),
@@ -191,6 +195,7 @@ module.exports = {
           });
           customerObj = customer;
         }
+
         if (customerObj != null) {
           const paymentIntent = await stripe.paymentIntents.create({
             amount: cart[0].totalPayable * 100,
@@ -199,7 +204,7 @@ module.exports = {
               enabled: true,
             },
             receipt_email: req.user.email,
-            customer: customerObj[0].id,
+            customer: customerObj["id"],
             metadata: {
               orderDiscountAmount: cart[0].cartDiscountAmount,
               orderTotalWeight: cart[0].cartTotalWeight,
@@ -217,6 +222,8 @@ module.exports = {
           res.send({
             clientSecret: paymentIntent.client_secret,
           });
+        } else {
+          throw createError.NotAcceptable("Unable to create stripe customer");
         }
       } else {
         throw createError.NotAcceptable("Cart is empty!");
