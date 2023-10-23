@@ -16,6 +16,8 @@ const CartRoute = require("./Routes/CartRoute");
 const CouponRoute = require("./Routes/CouponRoute");
 const CheckoutRoute = require("./Routes/CheckoutRoute");
 const OrderRoute = require("./Routes/OrderRoute");
+const EmailSubcriptionRoute = require("./Routes/EmailSubscriptionRoute");
+const EnquiryRoute = require("./Routes/EnquiryRoute");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 
@@ -268,6 +270,8 @@ app.use("/api/v1/coupon", CouponRoute);
 app.use("/api/v1/buy", CheckoutRoute);
 
 app.use("/api/v1/order", OrderRoute);
+app.use("/api/v1/subscribe", EmailSubcriptionRoute);
+app.use("/api/v1/enquire", EnquiryRoute);
 
 app.use(async (req, res, next) => {
   next(createError.NotFound("This route does not exists"));
