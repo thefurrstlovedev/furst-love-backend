@@ -182,6 +182,8 @@ module.exports = {
             "cartItems.product._id": 1,
             "cartItems.product.name": 1,
             "cartItems.product.discount": 1,
+            "cartItems.size": 1,
+            "cartItems.color": 1,
             "cartItems.product.images": 1,
             "cartItems.itemTotalWeight": 1,
             "cartItems.itemTotalDiscountAmount": 1,
