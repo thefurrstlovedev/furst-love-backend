@@ -215,30 +215,31 @@ module.exports = {
         const taxAmount = cart[0].cartTotalAmount * taxRate;
         cart[0].taxAmount = Math.round(taxAmount);
         cart[0].totalPayable = Math.round(cart[0].cartTotalAmount + taxAmount);
-        if (
-          req.user.addresses.length <= 0 ||
-          req.user.addresses[0].country.toString().toLowerCase() != "luxembourg"
-        ) {
-          const shippingRate = 10.65;
-          if (cart[0].cartTotalWeight > 1) {
-            const shippingCharges = Math.round(
-              cart[0].cartTotalWeight * shippingRate
-            );
-            cart[0].shippingCharges = shippingCharges;
-            cart[0].totalPayable = Math.round(
-              cart[0].totalPayable + shippingCharges
-            );
-          } else {
-            const shippingCharges = Math.round(1 * shippingRate);
-            cart[0].shippingCharges = shippingCharges;
-            cart[0].totalPayable = Math.round(
-              cart[0].totalPayable + shippingCharges
-            );
-          }
-        } else {
-          cart[0].shippingCharges = 0;
-        }
+        // if (
+        //   req.user.addresses.length <= 0 ||
+        //   req.user.addresses[0].country.toString().toLowerCase() != "luxembourg"
+        // ) {
+        //   const shippingRate = 10.65;
+        //   if (cart[0].cartTotalWeight > 1) {
+        //     const shippingCharges = Math.round(
+        //       cart[0].cartTotalWeight * shippingRate
+        //     );
+        //     cart[0].shippingCharges = shippingCharges;
+        //     cart[0].totalPayable = Math.round(
+        //       cart[0].totalPayable + shippingCharges
+        //     );
+        //   } else {
+        //     const shippingCharges = Math.round(1 * shippingRate);
+        //     cart[0].shippingCharges = shippingCharges;
+        //     cart[0].totalPayable = Math.round(
+        //       cart[0].totalPayable + shippingCharges
+        //     );
+        //   }
+        // } else {
+        //   cart[0].shippingCharges = 0;
+        // }
 
+        cart[0].shippingCharges = 0;
         res.json(cart);
       } else {
         res.json([]);
