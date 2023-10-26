@@ -42,7 +42,7 @@ module.exports = {
   //* Update order status
   updateOrderStatus: async (req, res, next) => {
     try {
-      if (req.body.status === 5) {
+      if (req.body.status === 3) {
         const order = await Order.findByIdAndUpdate(req.body.id, {
           $set: {
             orderStatus: req.body.status,
@@ -53,7 +53,7 @@ module.exports = {
       } else {
         const order = await Order.findByIdAndUpdate(req.body.id, {
           $set: {
-            orderStatus: 5,
+            orderStatus: req.body.status,
           },
         });
         res.send(order);

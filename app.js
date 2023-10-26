@@ -269,7 +269,7 @@ app.use("/api/v1/cart", CartRoute);
 app.use("/api/v1/coupon", CouponRoute);
 app.use("/api/v1/buy", CheckoutRoute);
 
-app.use("/api/v1/order", OrderRoute);
+app.use("/api/v1/order", [verifyAccessToken], OrderRoute);
 app.use("/api/v1/subscribe", EmailSubcriptionRoute);
 app.use("/api/v1/enquire", EnquiryRoute);
 

@@ -2,14 +2,10 @@ const express = require("express");
 const router = express.Router();
 
 const orderController = require("../Controllers/OrderController");
-const { verifyAccessToken, isAdmin } = require("../Helpers/jwtHelper");
+const { isAdmin } = require("../Helpers/jwtHelper");
 
 router.get("/", orderController.getUserOrders);
 router.get("/:id", orderController.getOrderDetails);
-router.put("/", orderController.updateOrderStatus);
-router.get(
-  "/admin/all",
-  [verifyAccessToken, isAdmin],
-  orderController.getAllOrders
-);
+router.put("/", isAdmin, orderController.updateOrderStatus);
+router.get("/admin/all", isAdmin, orderController.getAllOrders);
 module.exports = router;
