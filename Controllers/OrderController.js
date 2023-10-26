@@ -43,19 +43,28 @@ module.exports = {
   updateOrderStatus: async (req, res, next) => {
     try {
       if (req.body.status === 3) {
-        const order = await Order.findByIdAndUpdate(req.body.id, {
-          $set: {
-            orderStatus: req.body.status,
-            deliveredAt: new Date(),
+        const order = await Order.findOneAndUpdate(
+          { _id: req.body.id },
+          {
+            $set: {
+              orderStatus: req.body.orderStatus,
+              deliveredAt: new Date(),
+            },
           },
-        });
+          { new: true }
+        );
+
         res.send(order);
       } else {
-        const order = await Order.findByIdAndUpdate(req.body.id, {
-          $set: {
-            orderStatus: req.body.status,
+        const order = await Order.findOneAndUpdate(
+          { _id: req.body.id },
+          {
+            $set: {
+              orderStatus: req.body.orderStatus,
+            },
           },
-        });
+          { new: true }
+        );
         res.send(order);
       }
     } catch (error) {
