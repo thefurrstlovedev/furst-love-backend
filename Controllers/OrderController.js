@@ -12,7 +12,6 @@ module.exports = {
           delete e.__v;
         });
       }
-      console.log(orders);
 
       res.send(orders);
     } catch (error) {
@@ -26,7 +25,6 @@ module.exports = {
         .populate("orderItems.product", "name")
         .lean();
 
-      console.log(orders);
       res.send(orders);
     } catch (error) {
       next(error);
@@ -43,7 +41,7 @@ module.exports = {
       if (order != null) {
         delete order.__v;
       }
-      console.log(order);
+
       res.send(order);
     } catch (error) {
       next(error);
