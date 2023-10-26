@@ -4,7 +4,9 @@ module.exports = {
   //* Get all orders of single user
   getUserOrders: async (req, res, next) => {
     try {
-      const orders = await Order.find({ user_id: req.user._id }).lean();
+      const orders = await Order.find({ user_id: req.user._id })
+        .populate("orderItems.product", "name")
+        .lean();
       if (orders.length > 0) {
         orders.forEach((e) => {
           delete e.__v;
@@ -19,7 +21,9 @@ module.exports = {
   //* Get all orders
   getAllOrders: async (req, res, next) => {
     try {
-      const orders = await Order.find().lean();
+      const orders = await Order.find()
+        .populate("orderItems.product", "name")
+        .lean();
       res.send(orders);
     } catch (error) {
       next(error);
