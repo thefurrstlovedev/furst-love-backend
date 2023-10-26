@@ -93,9 +93,9 @@ const OrderSchema = new mongoose.Schema(
       required: true,
     },
     orderStatus: {
-      type: String,
+      type: Number,
       required: true,
-      default: "Processing",
+      default: 1,
     },
     couponApplied: {
       type: Boolean,
