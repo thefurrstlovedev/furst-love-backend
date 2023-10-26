@@ -12,6 +12,7 @@ module.exports = {
           delete e.__v;
         });
       }
+      console.log(orders);
 
       res.send(orders);
     } catch (error) {
@@ -24,6 +25,8 @@ module.exports = {
       const orders = await Order.find()
         .populate("orderItems.product", "name")
         .lean();
+
+      console.log(orders);
       res.send(orders);
     } catch (error) {
       next(error);
@@ -33,10 +36,14 @@ module.exports = {
   //* Get details of single order
   getOrderDetails: async (req, res, next) => {
     try {
-      const order = await Order.findById(req.params.id).lean();
+      console.log("This ran");
+      const order = await Order.findOne({ _id: req.params.id })
+        .populate("orderItems.product", "name")
+        .lean();
       if (order != null) {
         delete order.__v;
       }
+      console.log(order);
       res.send(order);
     } catch (error) {
       next(error);
