@@ -204,7 +204,7 @@ module.exports = {
           const discountAmount = (availableDiscount * cartTotalAmount) / 100;
           cartTotalAmount -= discountAmount;
           cart[0].cartDiscountAmount += discountAmount;
-          cart[0].cartDiscountAmount = Math.round(cart[0].cartDiscountAmount);
+          cart[0].cartDiscountAmount = cart[0].cartDiscountAmount.toFixed(2);
           cart[0].couponApplied = true;
         } else {
           cart[0].couponApplied = false;
@@ -213,8 +213,8 @@ module.exports = {
         cart[0].taxRate = 16;
         const taxRate = 0.16;
         const taxAmount = cart[0].cartTotalAmount * taxRate;
-        cart[0].taxAmount = Math.round(taxAmount);
-        cart[0].totalPayable = Math.round(cart[0].cartTotalAmount + taxAmount);
+        cart[0].taxAmount = taxAmount.toFixed(2);
+        cart[0].totalPayable = (cart[0].cartTotalAmount + taxAmount).toFixed(2);
         // if (
         //   req.user.addresses.length <= 0 ||
         //   req.user.addresses[0].country.toString().toLowerCase() != "luxembourg"
