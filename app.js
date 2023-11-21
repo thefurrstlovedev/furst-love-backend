@@ -8,8 +8,12 @@ const uuid = require("uuid");
 const createError = require("http-errors");
 require("dotenv").config();
 require("./Helpers/initMongodb");
-const { verifyAccessToken, isAdmin } = require("./Helpers/jwtHelper");
+const cron = require("node-cron");
+const { verifyAccessToken } = require("./Helpers/jwtHelper");
 const cors = require("cors");
+// const session = require("express-session");
+//const cookieParser = require("cookie-parser");
+// const MongoStore = require("connect-mongo");
 const AuthRoute = require("./Routes/AuthRoute");
 const ProductRoute = require("./Routes/ProductRoute");
 const CartRoute = require("./Routes/CartRoute");
@@ -20,10 +24,53 @@ const EmailSubcriptionRoute = require("./Routes/EmailSubscriptionRoute");
 const EnquiryRoute = require("./Routes/EnquiryRoute");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
-
+// app.use(cookieParser());
 app.use(morgan("dev")); // Used for logging all request in console
 
 app.use("/webhook", express.raw({ type: "*/*" }));
+
+app.use(express.json()); // Used to handle json data in request body
+app.use(express.urlencoded({ extended: true })); // Used to handle form data in request
+
+app.use(
+  cors({
+    origin: "*",
+  })
+);
+
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET,
+//     store: MongoStore.create({
+//       mongoUrl: process.env.MONGO_URL,
+//       collectionName: "sessions",
+//       stringify: false,
+//       autoRemove: true,
+//     }),
+//     saveUninitialized: true,
+//     resave: false,
+//     cookie: { maxAge: 3600000, sameSite: true, secure: false },
+//   })
+// );
+
+cron.schedule(
+  "0 5 * * *",
+  () => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Remove cart items older than one day for guests
+    Cart.deleteMany(
+      { sid: { $ne: null }, createdAt: { $lt: oneDayAgo } },
+      () => {
+        console.log("Guest carts cleaned up.");
+      }
+    );
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Kolkata",
+  }
+);
 
 app.post(
   "/webhook",
@@ -58,185 +105,368 @@ app.post(
           .retrieve(paymentIntentSucceeded.customer)
           .then(async (customer) => {
             console.log(`Here comes the 💰💰💰💰💰💰`);
-            const localUser = await User.findOne({
-              _id: customer.metadata.userId,
-            });
 
-            const cart = await Cart.aggregate([
-              {
-                $match: {
-                  _id: ObjectId(customer.metadata.userId),
+            if (paymentIntentSucceeded.metadata.address) {
+              console.log("Address found it must be a session user");
+              const cart = await Cart.aggregate([
+                {
+                  $match: {
+                    sid: customer.metadata.userId,
+                  },
                 },
-              },
-              {
-                $unwind: "$cartItems",
-              },
-              {
-                $lookup: {
-                  from: "products",
-                  localField: "cartItems.product",
-                  foreignField: "_id",
-                  as: "cartItems.product",
+                {
+                  $unwind: "$cartItems",
                 },
-              },
-              {
-                $unwind: "$cartItems.product",
-              },
-              {
-                $addFields: {
-                  "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
+                {
+                  $lookup: {
+                    from: "products",
+                    localField: "cartItems.product",
+                    foreignField: "_id",
+                    as: "cartItems.product",
+                  },
                 },
-              },
+                {
+                  $unwind: "$cartItems.product",
+                },
+                {
+                  $addFields: {
+                    "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
+                  },
+                },
 
-              {
-                $addFields: {
-                  "cartItems.itemTotalDiscountAmount": {
-                    $cond: {
-                      if: {
-                        $gt: ["$cartItems.product.discount", 0],
+                {
+                  $addFields: {
+                    "cartItems.itemTotalDiscountAmount": {
+                      $cond: {
+                        if: {
+                          $gt: ["$cartItems.product.discount", 0],
+                        },
+                        then: {
+                          $multiply: [
+                            "$cartItems.quantity",
+                            {
+                              $divide: [
+                                {
+                                  $multiply: [
+                                    {
+                                      $arrayElemAt: [
+                                        "$cartItems.product.prices",
+                                        {
+                                          $subtract: ["$cartItems.petCount", 1],
+                                        },
+                                      ],
+                                    },
+                                    "$cartItems.product.discount",
+                                  ],
+                                },
+                                100,
+                              ],
+                            },
+                          ],
+                        },
+                        else: 0,
                       },
-                      then: {
+                    },
+                    "cartItems.itemOriginalAmount": {
+                      $sum: {
                         $multiply: [
                           "$cartItems.quantity",
                           {
-                            $divide: [
+                            $arrayElemAt: [
+                              "$cartItems.product.prices",
                               {
-                                $multiply: [
-                                  {
-                                    $arrayElemAt: [
-                                      "$cartItems.product.prices",
-                                      {
-                                        $subtract: ["$cartItems.petCount", 1],
-                                      },
-                                    ],
-                                  },
-                                  "$cartItems.product.discount",
-                                ],
+                                $subtract: ["$cartItems.petCount", 1],
                               },
-                              100,
                             ],
                           },
                         ],
                       },
-                      else: 0,
+                    },
+                    "cartItems.itemTotalWeight": {
+                      $sum: {
+                        $multiply: [
+                          "$cartItems.quantity",
+                          "$cartItems.product.weight",
+                        ],
+                      },
                     },
                   },
-                  "cartItems.itemOriginalAmount": {
-                    $sum: {
-                      $multiply: [
-                        "$cartItems.quantity",
-                        {
-                          $arrayElemAt: [
-                            "$cartItems.product.prices",
+                },
+                {
+                  $addFields: {
+                    "cartItems.itemTotalAmount": {
+                      $subtract: [
+                        "$cartItems.itemOriginalAmount",
+                        "$cartItems.itemTotalDiscountAmount",
+                      ],
+                    },
+                  },
+                },
+                {
+                  $group: {
+                    _id: "$_id",
+                    cartItems: {
+                      $push: "$cartItems",
+                    },
+                  },
+                },
+                {
+                  $project: {
+                    "cartItems.quantity": 1,
+                    "cartItems._id": 1,
+                    "cartItems.product._id": 1,
+                    "cartItems.product.name": 1,
+                    "cartItems.product.discount": 1,
+                    "cartItems.product.images": 1,
+                    "cartItems.size": 1,
+                    "cartItems.petCount": 1,
+                    "cartItems.petImages": 1,
+                    "cartItems.color": 1,
+                    "cartItems.itemTotalWeight": 1,
+                    "cartItems.itemTotalDiscountAmount": 1,
+                    "cartItems.itemOriginalAmount": 1,
+                    "cartItems.itemTotalAmount": 1,
+                  },
+                },
+              ]);
+              const currentDate = new Date();
+              const year = currentDate.getFullYear();
+              const month = currentDate.getMonth() + 1;
+              const day = currentDate.getDate();
+              const hour = currentDate.getHours();
+              const minute = currentDate.getMinutes();
+              const second = currentDate.getSeconds();
+              const milliseconds = currentDate.getMilliseconds();
+              const uniqueId = uuid.v4().substring(0, 8);
+              const numericUuid = uniqueId
+                .split("-")
+                .map((hex) => parseInt(hex, 16))
+                .join("");
+              const receipt = `${year}${month}${day}-${hour}${minute}${second}-${milliseconds}-${numericUuid}`;
+
+              let order = new Order();
+
+              order.receipt = receipt;
+              order.orderItems = cart[0].cartItems;
+              order.user = customer.metadata.userId;
+              order.transactionId = paymentIntentSucceeded.id;
+              order.couponApplied =
+                paymentIntentSucceeded.metadata.couponApplied;
+              order.couponId = paymentIntentSucceeded.metadata.couponId;
+              order.orderDiscountAmount =
+                paymentIntentSucceeded.metadata.orderDiscountAmount;
+
+              order.orderTotalWeight =
+                paymentIntentSucceeded.metadata.orderTotalWeight;
+
+              order.orderOriginalAmount =
+                paymentIntentSucceeded.metadata.orderOriginalAmount;
+
+              order.orderTotalAmount =
+                paymentIntentSucceeded.metadata.orderTotalAmount;
+
+              order.taxRate = paymentIntentSucceeded.metadata.taxRate;
+              order.taxAmount = paymentIntentSucceeded.metadata.taxAmount;
+              order.totalPayable = paymentIntentSucceeded.metadata.totalPayable;
+              order.shippingCharges =
+                paymentIntentSucceeded.metadata.shippingCharges;
+
+              order.shippingInfo = {
+                name: paymentIntentSucceeded.address.name,
+                contact: paymentIntentSucceeded.address.contact,
+                pincode: paymentIntentSucceeded.address.pincode,
+                state: paymentIntentSucceeded.address.state,
+                city: paymentIntentSucceeded.address.city,
+                houseInfo: paymentIntentSucceeded.address.houseInfo,
+                streetName: paymentIntentSucceeded.address.streetName,
+                country: paymentIntentSucceeded.address.country,
+              };
+
+              const savedOrder = await order.save();
+              await Cart.deleteOne({ sid: customer.metadata.userId });
+            } else {
+              console.log("Address not found it must be a logged in user");
+              const localUser = await User.findOne({
+                _id: customer.metadata.userId,
+              });
+
+              const cart = await Cart.aggregate([
+                {
+                  $match: {
+                    _id: ObjectId(customer.metadata.userId),
+                  },
+                },
+                {
+                  $unwind: "$cartItems",
+                },
+                {
+                  $lookup: {
+                    from: "products",
+                    localField: "cartItems.product",
+                    foreignField: "_id",
+                    as: "cartItems.product",
+                  },
+                },
+                {
+                  $unwind: "$cartItems.product",
+                },
+                {
+                  $addFields: {
+                    "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
+                  },
+                },
+
+                {
+                  $addFields: {
+                    "cartItems.itemTotalDiscountAmount": {
+                      $cond: {
+                        if: {
+                          $gt: ["$cartItems.product.discount", 0],
+                        },
+                        then: {
+                          $multiply: [
+                            "$cartItems.quantity",
                             {
-                              $subtract: ["$cartItems.petCount", 1],
+                              $divide: [
+                                {
+                                  $multiply: [
+                                    {
+                                      $arrayElemAt: [
+                                        "$cartItems.product.prices",
+                                        {
+                                          $subtract: ["$cartItems.petCount", 1],
+                                        },
+                                      ],
+                                    },
+                                    "$cartItems.product.discount",
+                                  ],
+                                },
+                                100,
+                              ],
                             },
                           ],
                         },
+                        else: 0,
+                      },
+                    },
+                    "cartItems.itemOriginalAmount": {
+                      $sum: {
+                        $multiply: [
+                          "$cartItems.quantity",
+                          {
+                            $arrayElemAt: [
+                              "$cartItems.product.prices",
+                              {
+                                $subtract: ["$cartItems.petCount", 1],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                    "cartItems.itemTotalWeight": {
+                      $sum: {
+                        $multiply: [
+                          "$cartItems.quantity",
+                          "$cartItems.product.weight",
+                        ],
+                      },
+                    },
+                  },
+                },
+                {
+                  $addFields: {
+                    "cartItems.itemTotalAmount": {
+                      $subtract: [
+                        "$cartItems.itemOriginalAmount",
+                        "$cartItems.itemTotalDiscountAmount",
                       ],
                     },
                   },
-                  "cartItems.itemTotalWeight": {
-                    $sum: {
-                      $multiply: [
-                        "$cartItems.quantity",
-                        "$cartItems.product.weight",
-                      ],
+                },
+                {
+                  $group: {
+                    _id: "$_id",
+                    cartItems: {
+                      $push: "$cartItems",
                     },
                   },
                 },
-              },
-              {
-                $addFields: {
-                  "cartItems.itemTotalAmount": {
-                    $subtract: [
-                      "$cartItems.itemOriginalAmount",
-                      "$cartItems.itemTotalDiscountAmount",
-                    ],
+                {
+                  $project: {
+                    "cartItems.quantity": 1,
+                    "cartItems._id": 1,
+                    "cartItems.product._id": 1,
+                    "cartItems.product.name": 1,
+                    "cartItems.product.discount": 1,
+                    "cartItems.product.images": 1,
+                    "cartItems.size": 1,
+                    "cartItems.petCount": 1,
+                    "cartItems.petImages": 1,
+                    "cartItems.color": 1,
+                    "cartItems.itemTotalWeight": 1,
+                    "cartItems.itemTotalDiscountAmount": 1,
+                    "cartItems.itemOriginalAmount": 1,
+                    "cartItems.itemTotalAmount": 1,
                   },
                 },
-              },
-              {
-                $group: {
-                  _id: "$_id",
-                  cartItems: {
-                    $push: "$cartItems",
-                  },
-                },
-              },
-              {
-                $project: {
-                  "cartItems.quantity": 1,
-                  "cartItems._id": 1,
-                  "cartItems.product._id": 1,
-                  "cartItems.product.name": 1,
-                  "cartItems.product.discount": 1,
-                  "cartItems.product.images": 1,
-                  "cartItems.size": 1,
-                  "cartItems.petCount": 1,
-                  "cartItems.petImages": 1,
-                  "cartItems.color": 1,
-                  "cartItems.itemTotalWeight": 1,
-                  "cartItems.itemTotalDiscountAmount": 1,
-                  "cartItems.itemOriginalAmount": 1,
-                  "cartItems.itemTotalAmount": 1,
-                },
-              },
-            ]);
-            const currentDate = new Date();
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth() + 1;
-            const day = currentDate.getDate();
-            const hour = currentDate.getHours();
-            const minute = currentDate.getMinutes();
-            const second = currentDate.getSeconds();
-            const milliseconds = currentDate.getMilliseconds();
-            const uniqueId = uuid.v4().substring(0, 8);
-            const numericUuid = uniqueId
-              .split("-")
-              .map((hex) => parseInt(hex, 16))
-              .join("");
-            const receipt = `${year}${month}${day}-${hour}${minute}${second}-${milliseconds}-${numericUuid}`;
+              ]);
+              const currentDate = new Date();
+              const year = currentDate.getFullYear();
+              const month = currentDate.getMonth() + 1;
+              const day = currentDate.getDate();
+              const hour = currentDate.getHours();
+              const minute = currentDate.getMinutes();
+              const second = currentDate.getSeconds();
+              const milliseconds = currentDate.getMilliseconds();
+              const uniqueId = uuid.v4().substring(0, 8);
+              const numericUuid = uniqueId
+                .split("-")
+                .map((hex) => parseInt(hex, 16))
+                .join("");
+              const receipt = `${year}${month}${day}-${hour}${minute}${second}-${milliseconds}-${numericUuid}`;
 
-            let order = new Order();
+              let order = new Order();
 
-            order.receipt = receipt;
-            order.orderItems = cart[0].cartItems;
-            order.user = customer.metadata.userId;
-            order.transactionId = paymentIntentSucceeded.id;
-            order.couponApplied = paymentIntentSucceeded.metadata.couponApplied;
-            order.couponId = paymentIntentSucceeded.metadata.couponId;
-            order.orderDiscountAmount =
-              paymentIntentSucceeded.metadata.orderDiscountAmount;
+              order.receipt = receipt;
+              order.orderItems = cart[0].cartItems;
+              order.user = customer.metadata.userId;
+              order.transactionId = paymentIntentSucceeded.id;
+              order.couponApplied =
+                paymentIntentSucceeded.metadata.couponApplied;
+              order.couponId = paymentIntentSucceeded.metadata.couponId;
+              order.orderDiscountAmount =
+                paymentIntentSucceeded.metadata.orderDiscountAmount;
 
-            order.orderTotalWeight =
-              paymentIntentSucceeded.metadata.orderTotalWeight;
+              order.orderTotalWeight =
+                paymentIntentSucceeded.metadata.orderTotalWeight;
 
-            order.orderOriginalAmount =
-              paymentIntentSucceeded.metadata.orderOriginalAmount;
+              order.orderOriginalAmount =
+                paymentIntentSucceeded.metadata.orderOriginalAmount;
 
-            order.orderTotalAmount =
-              paymentIntentSucceeded.metadata.orderTotalAmount;
+              order.orderTotalAmount =
+                paymentIntentSucceeded.metadata.orderTotalAmount;
 
-            order.taxRate = paymentIntentSucceeded.metadata.taxRate;
-            order.taxAmount = paymentIntentSucceeded.metadata.taxAmount;
-            order.totalPayable = paymentIntentSucceeded.metadata.totalPayable;
-            order.shippingCharges =
-              paymentIntentSucceeded.metadata.shippingCharges;
+              order.taxRate = paymentIntentSucceeded.metadata.taxRate;
+              order.taxAmount = paymentIntentSucceeded.metadata.taxAmount;
+              order.totalPayable = paymentIntentSucceeded.metadata.totalPayable;
+              order.shippingCharges =
+                paymentIntentSucceeded.metadata.shippingCharges;
 
-            order.shippingInfo = {
-              name: localUser.addresses[0].name,
-              contact: localUser.addresses[0].contact,
-              pincode: localUser.addresses[0].pincode,
-              state: localUser.addresses[0].state,
-              city: localUser.addresses[0].city,
-              houseInfo: localUser.addresses[0].houseInfo,
-              streetName: localUser.addresses[0].streetName,
-              country: localUser.addresses[0].country,
-            };
+              order.shippingInfo = {
+                name: localUser.addresses[0].name,
+                contact: localUser.addresses[0].contact,
+                pincode: localUser.addresses[0].pincode,
+                state: localUser.addresses[0].state,
+                city: localUser.addresses[0].city,
+                houseInfo: localUser.addresses[0].houseInfo,
+                streetName: localUser.addresses[0].streetName,
+                country: localUser.addresses[0].country,
+              };
 
-            const savedOrder = await order.save();
-            await Cart.deleteOne({ _id: localUser._id });
+              const savedOrder = await order.save();
+              await Cart.deleteOne({ _id: localUser._id });
+            }
           })
           .catch((err) => console.log(err.message));
 
@@ -249,12 +479,6 @@ app.post(
     res.send().end();
   }
 );
-app.use(express.json()); // Used to handle json data in request body
-app.use(express.urlencoded({ extended: true })); // Used to handle form data in request
-const corsOptions = {
-  origin: "*",
-};
-app.use(cors(corsOptions));
 
 app.get("/health", async (req, res, next) => {
   res.send("🚀🚀 I'm flyingg!!! 🚀🚀");

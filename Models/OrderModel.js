@@ -84,8 +84,7 @@ const OrderSchema = new mongoose.Schema(
       },
     ],
     user: {
-      type: Schema.Types.ObjectId,
-      ref: "user",
+      type: String,
       required: true,
     },
     transactionId: {

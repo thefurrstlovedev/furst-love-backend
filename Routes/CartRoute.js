@@ -5,6 +5,8 @@ const { verifyAccessToken } = require("../Helpers/jwtHelper");
 
 router.get("/", [verifyAccessToken], cartController.getCartItemCount);
 router.post("/", [verifyAccessToken], cartController.createCart);
+router.post("/session/", cartController.createSesssionCart);
+router.post("/session/my-cart/", cartController.getSessionCart);
 router.post("/my-cart/", [verifyAccessToken], cartController.getCart);
 router.delete("/:id", [verifyAccessToken], cartController.removeFromCart);
 router.put(
@@ -12,6 +14,5 @@ router.put(
   [verifyAccessToken],
   cartController.updateCartItemCount
 );
-//router.get("/checkout", [verifyAccessToken], cartController.checkout);
 
 module.exports = router;

@@ -193,7 +193,6 @@ module.exports = {
 
       console.log(otp);
 
-
       try {
         const data = await resend.emails.send({
           from: "no-reply@transactional.thefurrstlove.com",
@@ -354,7 +353,6 @@ module.exports = {
           status: true,
           message: `Email sent to ${user.email} successfully`,
         });
-
       } catch (error) {
         await User.findOneAndUpdate(
           { email },
@@ -367,34 +365,6 @@ module.exports = {
         );
         return next(createError.InternalServerError(error.message));
       }
-
-
-
-
-
-      // TODO : ENABLE EMAILING SERVICE BY UNCOMMENTING BELOW CODE
-      // try {
-      //   await sendPasswordResetEmail({
-      //     email: user.email,
-      //     subject: `Ecommerce Password Recovery`,
-      //     message,
-      //   });
-      //   res.json({
-      //     status: true,
-      //     message: `Email sent to ${user.email} successfully`,
-      //   });
-      // } catch (error) {
-      //   User.findOneAndUpdate(
-      //     { email },
-      //     {
-      //       $set: {
-      //         verifyToken: undefined,
-      //         verifyTokenExpire: undefined,
-      //       },
-      //     }
-      //   );
-      //   return next(createError.InternalServerError(error.message));
-      // }
     } catch (error) {
       if (error.isJoi == true) error.status = 422;
       next(error);

@@ -24,6 +24,9 @@ const CartSchema = new mongoose.Schema(
         },
       },
     ],
+    sid: {
+      type: String,
+    },
     _id: {
       type: Schema.Types.ObjectId,
       required: true,
