@@ -367,181 +367,181 @@ module.exports = {
     }
   },
 
-  getSessionCart: async (req, res, next) => {
-    try {
-      const { couponId } = req.body;
-      const sessionID = req.sessionID.toString().trim();
-      let availableDiscount = 0;
+  // getSessionCart: async (req, res, next) => {
+  //   try {
+  //     const { couponId } = req.body;
+  //     const sessionID = req.sessionID.toString().trim();
+  //     let availableDiscount = 0;
 
-      if (couponId) {
-        const doesExists = await Coupon.findOne({ coupon: couponId });
-        if (doesExists != null && doesExists.isEnabled === true) {
-          availableDiscount = doesExists.discount;
-        }
-      }
+  //     if (couponId) {
+  //       const doesExists = await Coupon.findOne({ coupon: couponId });
+  //       if (doesExists != null && doesExists.isEnabled === true) {
+  //         availableDiscount = doesExists.discount;
+  //       }
+  //     }
 
-      const cart = await Cart.aggregate([
-        {
-          $match: {
-            sid: sessionID,
-          },
-        },
-        {
-          $unwind: "$cartItems",
-        },
-        {
-          $lookup: {
-            from: "products",
-            localField: "cartItems.product",
-            foreignField: "_id",
-            as: "cartItems.product",
-          },
-        },
-        {
-          $unwind: "$cartItems.product",
-        },
-        {
-          $addFields: {
-            "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
-          },
-        },
+  //     const cart = await Cart.aggregate([
+  //       {
+  //         $match: {
+  //           sid: sessionID,
+  //         },
+  //       },
+  //       {
+  //         $unwind: "$cartItems",
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: "products",
+  //           localField: "cartItems.product",
+  //           foreignField: "_id",
+  //           as: "cartItems.product",
+  //         },
+  //       },
+  //       {
+  //         $unwind: "$cartItems.product",
+  //       },
+  //       {
+  //         $addFields: {
+  //           "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
+  //         },
+  //       },
 
-        {
-          $addFields: {
-            "cartItems.itemTotalDiscountAmount": {
-              $cond: {
-                if: {
-                  $gt: ["$cartItems.product.discount", 0],
-                },
-                then: {
-                  $multiply: [
-                    "$cartItems.quantity",
-                    {
-                      $divide: [
-                        {
-                          $multiply: [
-                            {
-                              $arrayElemAt: [
-                                "$cartItems.product.prices",
-                                {
-                                  $subtract: ["$cartItems.petCount", 1],
-                                },
-                              ],
-                            },
-                            "$cartItems.product.discount",
-                          ],
-                        },
-                        100,
-                      ],
-                    },
-                  ],
-                },
-                else: 0,
-              },
-            },
-            "cartItems.itemOriginalAmount": {
-              $sum: {
-                $multiply: [
-                  "$cartItems.quantity",
-                  {
-                    $arrayElemAt: [
-                      "$cartItems.product.prices",
-                      {
-                        $subtract: ["$cartItems.petCount", 1],
-                      },
-                    ],
-                  },
-                ],
-              },
-            },
-            "cartItems.itemTotalWeight": {
-              $sum: {
-                $multiply: ["$cartItems.quantity", "$cartItems.product.weight"],
-              },
-            },
-          },
-        },
-        {
-          $addFields: {
-            "cartItems.itemTotalAmount": {
-              $subtract: [
-                "$cartItems.itemOriginalAmount",
-                "$cartItems.itemTotalDiscountAmount",
-              ],
-            },
-          },
-        },
-        {
-          $group: {
-            _id: "$_id",
-            cartItems: {
-              $push: "$cartItems",
-            },
+  //       {
+  //         $addFields: {
+  //           "cartItems.itemTotalDiscountAmount": {
+  //             $cond: {
+  //               if: {
+  //                 $gt: ["$cartItems.product.discount", 0],
+  //               },
+  //               then: {
+  //                 $multiply: [
+  //                   "$cartItems.quantity",
+  //                   {
+  //                     $divide: [
+  //                       {
+  //                         $multiply: [
+  //                           {
+  //                             $arrayElemAt: [
+  //                               "$cartItems.product.prices",
+  //                               {
+  //                                 $subtract: ["$cartItems.petCount", 1],
+  //                               },
+  //                             ],
+  //                           },
+  //                           "$cartItems.product.discount",
+  //                         ],
+  //                       },
+  //                       100,
+  //                     ],
+  //                   },
+  //                 ],
+  //               },
+  //               else: 0,
+  //             },
+  //           },
+  //           "cartItems.itemOriginalAmount": {
+  //             $sum: {
+  //               $multiply: [
+  //                 "$cartItems.quantity",
+  //                 {
+  //                   $arrayElemAt: [
+  //                     "$cartItems.product.prices",
+  //                     {
+  //                       $subtract: ["$cartItems.petCount", 1],
+  //                     },
+  //                   ],
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //           "cartItems.itemTotalWeight": {
+  //             $sum: {
+  //               $multiply: ["$cartItems.quantity", "$cartItems.product.weight"],
+  //             },
+  //           },
+  //         },
+  //       },
+  //       {
+  //         $addFields: {
+  //           "cartItems.itemTotalAmount": {
+  //             $subtract: [
+  //               "$cartItems.itemOriginalAmount",
+  //               "$cartItems.itemTotalDiscountAmount",
+  //             ],
+  //           },
+  //         },
+  //       },
+  //       {
+  //         $group: {
+  //           _id: "$_id",
+  //           cartItems: {
+  //             $push: "$cartItems",
+  //           },
 
-            cartDiscountAmount: {
-              $sum: "$cartItems.itemTotalDiscountAmount",
-            },
-            cartTotalWeight: {
-              $sum: "$cartItems.itemTotalWeight",
-            },
-            cartOriginalAmount: {
-              $sum: "$cartItems.itemOriginalAmount",
-            },
-            cartTotalAmount: {
-              $sum: "$cartItems.itemTotalAmount",
-            },
-          },
-        },
-        {
-          $project: {
-            "cartItems.quantity": 1,
-            "cartItems._id": 1,
-            "cartItems.petCount": 1,
-            "cartItems.product._id": 1,
-            "cartItems.product.name": 1,
-            "cartItems.product.discount": 1,
-            "cartItems.size": 1,
-            "cartItems.color": 1,
-            "cartItems.product.images": 1,
-            "cartItems.itemTotalWeight": 1,
-            "cartItems.itemTotalDiscountAmount": 1,
-            "cartItems.itemOriginalAmount": 1,
-            "cartItems.itemTotalAmount": 1,
-            cartTotalWeight: 1,
-            cartDiscountAmount: 1,
-            cartOriginalAmount: 1,
-            cartTotalAmount: 1,
-          },
-        },
-      ]);
+  //           cartDiscountAmount: {
+  //             $sum: "$cartItems.itemTotalDiscountAmount",
+  //           },
+  //           cartTotalWeight: {
+  //             $sum: "$cartItems.itemTotalWeight",
+  //           },
+  //           cartOriginalAmount: {
+  //             $sum: "$cartItems.itemOriginalAmount",
+  //           },
+  //           cartTotalAmount: {
+  //             $sum: "$cartItems.itemTotalAmount",
+  //           },
+  //         },
+  //       },
+  //       {
+  //         $project: {
+  //           "cartItems.quantity": 1,
+  //           "cartItems._id": 1,
+  //           "cartItems.petCount": 1,
+  //           "cartItems.product._id": 1,
+  //           "cartItems.product.name": 1,
+  //           "cartItems.product.discount": 1,
+  //           "cartItems.size": 1,
+  //           "cartItems.color": 1,
+  //           "cartItems.product.images": 1,
+  //           "cartItems.itemTotalWeight": 1,
+  //           "cartItems.itemTotalDiscountAmount": 1,
+  //           "cartItems.itemOriginalAmount": 1,
+  //           "cartItems.itemTotalAmount": 1,
+  //           cartTotalWeight: 1,
+  //           cartDiscountAmount: 1,
+  //           cartOriginalAmount: 1,
+  //           cartTotalAmount: 1,
+  //         },
+  //       },
+  //     ]);
 
-      if (cart.length > 0) {
-        let cartTotalAmount = cart[0].cartTotalAmount;
+  //     if (cart.length > 0) {
+  //       let cartTotalAmount = cart[0].cartTotalAmount;
 
-        if (availableDiscount > 0) {
-          const discountAmount = (availableDiscount * cartTotalAmount) / 100;
-          cartTotalAmount -= discountAmount;
-          cart[0].cartDiscountAmount += discountAmount;
-          cart[0].cartDiscountAmount = cart[0].cartDiscountAmount.toFixed(2);
-          cart[0].couponApplied = true;
-        } else {
-          cart[0].couponApplied = false;
-        }
-        cart[0].cartTotalAmount = cartTotalAmount;
-        cart[0].taxRate = 16;
-        const taxRate = 0.16;
-        const taxAmount = cart[0].cartTotalAmount * taxRate;
-        cart[0].taxAmount = taxAmount.toFixed(2);
-        cart[0].totalPayable = (cart[0].cartTotalAmount + taxAmount).toFixed(2);
+  //       if (availableDiscount > 0) {
+  //         const discountAmount = (availableDiscount * cartTotalAmount) / 100;
+  //         cartTotalAmount -= discountAmount;
+  //         cart[0].cartDiscountAmount += discountAmount;
+  //         cart[0].cartDiscountAmount = cart[0].cartDiscountAmount.toFixed(2);
+  //         cart[0].couponApplied = true;
+  //       } else {
+  //         cart[0].couponApplied = false;
+  //       }
+  //       cart[0].cartTotalAmount = cartTotalAmount;
+  //       cart[0].taxRate = 16;
+  //       const taxRate = 0.16;
+  //       const taxAmount = cart[0].cartTotalAmount * taxRate;
+  //       cart[0].taxAmount = taxAmount.toFixed(2);
+  //       cart[0].totalPayable = (cart[0].cartTotalAmount + taxAmount).toFixed(2);
 
-        cart[0].shippingCharges = 0;
-        res.json(cart);
-      } else {
-        res.json([]);
-      }
-    } catch (error) {
-      if (error.isJoi == true) error.status = 422;
-      next(error);
-    }
-  },
+  //       cart[0].shippingCharges = 0;
+  //       res.json(cart);
+  //     } else {
+  //       res.json([]);
+  //     }
+  //   } catch (error) {
+  //     if (error.isJoi == true) error.status = 422;
+  //     next(error);
+  //   }
+  // },
 };
