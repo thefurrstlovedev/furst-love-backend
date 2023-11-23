@@ -1,6 +1,7 @@
 const joi = require("@hapi/joi");
 
 const createCartItem = joi.object({
+  sid: joi.any(),
   quantity: joi.number().required(),
   product: joi.string().required(),
   size: joi.string().required(),

@@ -12,7 +12,8 @@ const createAddressSchema = joi.object({
 });
 
 const checkoutValidation = joi.object({
-  couponId: joi.string(),
+  couponId: joi.any(),
+  sid: joi.string().required(),
   email: joi.string().required(),
   address: joi.object({
     name: joi.string().required(),

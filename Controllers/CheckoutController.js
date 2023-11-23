@@ -304,7 +304,7 @@ module.exports = {
       const cart = await Cart.aggregate([
         {
           $match: {
-            sid: req.sessionID,
+            sid: validated.sid,
           },
         },
         {
@@ -480,7 +480,7 @@ module.exports = {
         console.log("Creating New stripe customer");
         const customer = await stripe.customers.create({
           metadata: {
-            userId: req.sessionID,
+            userId: validated.sid,
           },
         });
         customerObj = customer;

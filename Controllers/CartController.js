@@ -4,6 +4,7 @@ const Coupon = require("../Models/CouponModel");
 const createError = require("http-errors");
 const { createCartItem } = require("../Validators/CartValidation");
 const uuid = require("uuid");
+const joi = require("@hapi/joi");
 
 module.exports = {
   //* Used to create user cart or if already exists then push new Item to it
@@ -328,220 +329,281 @@ module.exports = {
     }
   },
 
+  // updateSessionCartItemCount: async (req, res, next) => {
+  //   try {
+  //     const cart = await Cart.findOneAndUpdate(
+  //       {
+  //         sid: req.params.sid,
+  //         "cartItems._id": req.params.id,
+  //       },
+  //       {
+  //         $inc: {
+  //           "cartItems.$.quantity": req.params.quantity,
+  //         },
+  //       },
+  //       { new: true }
+  //     );
+  //     if (!cart) throw createError.NotFound("Cart is empty");
+  //     res.json({
+  //       status: true,
+  //       message: "Item quantity updated",
+  //     });
+  //   } catch (error) {
+  //     if (error.isJoi == true) error.status = 422;
+  //     next(error);
+  //   }
+  // },
+
   createSesssionCart: async (req, res, next) => {
     try {
-      var { sid } = req.body;
-      console.log(sid);
-      if (sid === undefined || sid === null) {
-        console.log("Inside if");
-        sid = uuid.v4();
+      const validatedCartItem = await createCartItem.validateAsync(req.body);
+      if (
+        validatedCartItem.sid === undefined ||
+        validatedCartItem.sid === null
+      ) {
+        validatedCartItem.sid = uuid.v4();
       }
-
-      // const validatedCartItem = await createCartItem.validateAsync(req.body);
-      // const cart = await Cart.findOneAndUpdate(
-      //   { sid: sid },
-      //   {
-      //     $push: {
-      //       cartItems: [
-      //         {
-      //           quantity: validatedCartItem.quantity,
-      //           product: validatedCartItem.product,
-      //           size: validatedCartItem.size,
-      //           petCount: validatedCartItem.petCount,
-      //           petImages: validatedCartItem.petImages,
-      //           color: validatedCartItem.color,
-      //         },
-      //       ],
-      //     },
-      //   },
-      //   { upsert: true, new: true }
-      // );
+      const cart = await Cart.findOneAndUpdate(
+        { sid: validatedCartItem.sid },
+        {
+          $push: {
+            cartItems: [
+              {
+                quantity: validatedCartItem.quantity,
+                product: validatedCartItem.product,
+                size: validatedCartItem.size,
+                petCount: validatedCartItem.petCount,
+                petImages: validatedCartItem.petImages,
+                color: validatedCartItem.color,
+              },
+            ],
+          },
+        },
+        { upsert: true, new: true }
+      );
       res.status(201).json({
         success: true,
         message: "Item added to cart",
-        sid: sid,
+        sid: validatedCartItem.sid,
       });
+    } catch (error) {
+      console.log(error);
+      if (error.isJoi == true) error.status = 422;
+      next(error);
+    }
+  },
+
+  getSessionCart: async (req, res, next) => {
+    try {
+      const { couponId, sid } = req.body;
+
+      let availableDiscount = 0;
+
+      if (couponId) {
+        const doesExists = await Coupon.findOne({ coupon: couponId });
+        if (doesExists != null && doesExists.isEnabled === true) {
+          availableDiscount = doesExists.discount;
+        }
+      }
+
+      const cart = await Cart.aggregate([
+        {
+          $match: {
+            sid: sid,
+          },
+        },
+        {
+          $unwind: "$cartItems",
+        },
+        {
+          $lookup: {
+            from: "products",
+            localField: "cartItems.product",
+            foreignField: "_id",
+            as: "cartItems.product",
+          },
+        },
+        {
+          $unwind: "$cartItems.product",
+        },
+        {
+          $addFields: {
+            "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
+          },
+        },
+
+        {
+          $addFields: {
+            "cartItems.itemTotalDiscountAmount": {
+              $cond: {
+                if: {
+                  $gt: ["$cartItems.product.discount", 0],
+                },
+                then: {
+                  $multiply: [
+                    "$cartItems.quantity",
+                    {
+                      $divide: [
+                        {
+                          $multiply: [
+                            {
+                              $arrayElemAt: [
+                                "$cartItems.product.prices",
+                                {
+                                  $subtract: ["$cartItems.petCount", 1],
+                                },
+                              ],
+                            },
+                            "$cartItems.product.discount",
+                          ],
+                        },
+                        100,
+                      ],
+                    },
+                  ],
+                },
+                else: 0,
+              },
+            },
+            "cartItems.itemOriginalAmount": {
+              $sum: {
+                $multiply: [
+                  "$cartItems.quantity",
+                  {
+                    $arrayElemAt: [
+                      "$cartItems.product.prices",
+                      {
+                        $subtract: ["$cartItems.petCount", 1],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+            "cartItems.itemTotalWeight": {
+              $sum: {
+                $multiply: ["$cartItems.quantity", "$cartItems.product.weight"],
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            "cartItems.itemTotalAmount": {
+              $subtract: [
+                "$cartItems.itemOriginalAmount",
+                "$cartItems.itemTotalDiscountAmount",
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id",
+            cartItems: {
+              $push: "$cartItems",
+            },
+
+            cartDiscountAmount: {
+              $sum: "$cartItems.itemTotalDiscountAmount",
+            },
+            cartTotalWeight: {
+              $sum: "$cartItems.itemTotalWeight",
+            },
+            cartOriginalAmount: {
+              $sum: "$cartItems.itemOriginalAmount",
+            },
+            cartTotalAmount: {
+              $sum: "$cartItems.itemTotalAmount",
+            },
+          },
+        },
+        {
+          $project: {
+            "cartItems.quantity": 1,
+            "cartItems._id": 1,
+            "cartItems.petCount": 1,
+            "cartItems.product._id": 1,
+            "cartItems.product.name": 1,
+            "cartItems.product.discount": 1,
+            "cartItems.size": 1,
+            "cartItems.color": 1,
+            "cartItems.product.images": 1,
+            "cartItems.itemTotalWeight": 1,
+            "cartItems.itemTotalDiscountAmount": 1,
+            "cartItems.itemOriginalAmount": 1,
+            "cartItems.itemTotalAmount": 1,
+            cartTotalWeight: 1,
+            cartDiscountAmount: 1,
+            cartOriginalAmount: 1,
+            cartTotalAmount: 1,
+          },
+        },
+      ]);
+
+      if (cart.length > 0) {
+        let cartTotalAmount = cart[0].cartTotalAmount;
+
+        if (availableDiscount > 0) {
+          const discountAmount = (availableDiscount * cartTotalAmount) / 100;
+          cartTotalAmount -= discountAmount;
+          cart[0].cartDiscountAmount += discountAmount;
+          cart[0].cartDiscountAmount = cart[0].cartDiscountAmount.toFixed(2);
+          cart[0].couponApplied = true;
+        } else {
+          cart[0].couponApplied = false;
+        }
+        cart[0].cartTotalAmount = cartTotalAmount;
+        cart[0].taxRate = 16;
+        const taxRate = 0.16;
+        const taxAmount = cart[0].cartTotalAmount * taxRate;
+        cart[0].taxAmount = taxAmount.toFixed(2);
+        cart[0].totalPayable = (cart[0].cartTotalAmount + taxAmount).toFixed(2);
+
+        cart[0].shippingCharges = 0;
+        res.json(cart);
+      } else {
+        res.json([]);
+      }
     } catch (error) {
       if (error.isJoi == true) error.status = 422;
       next(error);
     }
   },
 
-  // getSessionCart: async (req, res, next) => {
-  //   try {
-  //     const { couponId } = req.body;
-  //     const sessionID = req.sessionID.toString().trim();
-  //     let availableDiscount = 0;
+  //* Used to remove item from cart
+  removeFromSessionCart: async (req, res, next) => {
+    try {
+      const cart = await Cart.findOneAndUpdate(
+        { sid: req.params.sid },
+        {
+          $pull: {
+            cartItems: { _id: req.params.id },
+          },
+        },
+        { new: true }
+      );
 
-  //     if (couponId) {
-  //       const doesExists = await Coupon.findOne({ coupon: couponId });
-  //       if (doesExists != null && doesExists.isEnabled === true) {
-  //         availableDiscount = doesExists.discount;
-  //       }
-  //     }
-
-  //     const cart = await Cart.aggregate([
-  //       {
-  //         $match: {
-  //           sid: sessionID,
-  //         },
-  //       },
-  //       {
-  //         $unwind: "$cartItems",
-  //       },
-  //       {
-  //         $lookup: {
-  //           from: "products",
-  //           localField: "cartItems.product",
-  //           foreignField: "_id",
-  //           as: "cartItems.product",
-  //         },
-  //       },
-  //       {
-  //         $unwind: "$cartItems.product",
-  //       },
-  //       {
-  //         $addFields: {
-  //           "cartItems.petCount": { $toInt: "$cartItems.petCount" }, // Subtract 1 from petCount
-  //         },
-  //       },
-
-  //       {
-  //         $addFields: {
-  //           "cartItems.itemTotalDiscountAmount": {
-  //             $cond: {
-  //               if: {
-  //                 $gt: ["$cartItems.product.discount", 0],
-  //               },
-  //               then: {
-  //                 $multiply: [
-  //                   "$cartItems.quantity",
-  //                   {
-  //                     $divide: [
-  //                       {
-  //                         $multiply: [
-  //                           {
-  //                             $arrayElemAt: [
-  //                               "$cartItems.product.prices",
-  //                               {
-  //                                 $subtract: ["$cartItems.petCount", 1],
-  //                               },
-  //                             ],
-  //                           },
-  //                           "$cartItems.product.discount",
-  //                         ],
-  //                       },
-  //                       100,
-  //                     ],
-  //                   },
-  //                 ],
-  //               },
-  //               else: 0,
-  //             },
-  //           },
-  //           "cartItems.itemOriginalAmount": {
-  //             $sum: {
-  //               $multiply: [
-  //                 "$cartItems.quantity",
-  //                 {
-  //                   $arrayElemAt: [
-  //                     "$cartItems.product.prices",
-  //                     {
-  //                       $subtract: ["$cartItems.petCount", 1],
-  //                     },
-  //                   ],
-  //                 },
-  //               ],
-  //             },
-  //           },
-  //           "cartItems.itemTotalWeight": {
-  //             $sum: {
-  //               $multiply: ["$cartItems.quantity", "$cartItems.product.weight"],
-  //             },
-  //           },
-  //         },
-  //       },
-  //       {
-  //         $addFields: {
-  //           "cartItems.itemTotalAmount": {
-  //             $subtract: [
-  //               "$cartItems.itemOriginalAmount",
-  //               "$cartItems.itemTotalDiscountAmount",
-  //             ],
-  //           },
-  //         },
-  //       },
-  //       {
-  //         $group: {
-  //           _id: "$_id",
-  //           cartItems: {
-  //             $push: "$cartItems",
-  //           },
-
-  //           cartDiscountAmount: {
-  //             $sum: "$cartItems.itemTotalDiscountAmount",
-  //           },
-  //           cartTotalWeight: {
-  //             $sum: "$cartItems.itemTotalWeight",
-  //           },
-  //           cartOriginalAmount: {
-  //             $sum: "$cartItems.itemOriginalAmount",
-  //           },
-  //           cartTotalAmount: {
-  //             $sum: "$cartItems.itemTotalAmount",
-  //           },
-  //         },
-  //       },
-  //       {
-  //         $project: {
-  //           "cartItems.quantity": 1,
-  //           "cartItems._id": 1,
-  //           "cartItems.petCount": 1,
-  //           "cartItems.product._id": 1,
-  //           "cartItems.product.name": 1,
-  //           "cartItems.product.discount": 1,
-  //           "cartItems.size": 1,
-  //           "cartItems.color": 1,
-  //           "cartItems.product.images": 1,
-  //           "cartItems.itemTotalWeight": 1,
-  //           "cartItems.itemTotalDiscountAmount": 1,
-  //           "cartItems.itemOriginalAmount": 1,
-  //           "cartItems.itemTotalAmount": 1,
-  //           cartTotalWeight: 1,
-  //           cartDiscountAmount: 1,
-  //           cartOriginalAmount: 1,
-  //           cartTotalAmount: 1,
-  //         },
-  //       },
-  //     ]);
-
-  //     if (cart.length > 0) {
-  //       let cartTotalAmount = cart[0].cartTotalAmount;
-
-  //       if (availableDiscount > 0) {
-  //         const discountAmount = (availableDiscount * cartTotalAmount) / 100;
-  //         cartTotalAmount -= discountAmount;
-  //         cart[0].cartDiscountAmount += discountAmount;
-  //         cart[0].cartDiscountAmount = cart[0].cartDiscountAmount.toFixed(2);
-  //         cart[0].couponApplied = true;
-  //       } else {
-  //         cart[0].couponApplied = false;
-  //       }
-  //       cart[0].cartTotalAmount = cartTotalAmount;
-  //       cart[0].taxRate = 16;
-  //       const taxRate = 0.16;
-  //       const taxAmount = cart[0].cartTotalAmount * taxRate;
-  //       cart[0].taxAmount = taxAmount.toFixed(2);
-  //       cart[0].totalPayable = (cart[0].cartTotalAmount + taxAmount).toFixed(2);
-
-  //       cart[0].shippingCharges = 0;
-  //       res.json(cart);
-  //     } else {
-  //       res.json([]);
-  //     }
-  //   } catch (error) {
-  //     if (error.isJoi == true) error.status = 422;
-  //     next(error);
-  //   }
-  // },
+      if (cart) {
+        if (cart.cartItems.length === 0) {
+          await Cart.findByIdAndDelete(cart._id);
+          res.status(202).json({
+            status: true,
+            message: "Item removed",
+          });
+        } else {
+          res.status(202).json({
+            status: true,
+            message: "Item removed",
+          });
+        }
+      } else {
+        throw createError.NotFound("Cart is already empty");
+      }
+    } catch (error) {
+      console.log(error);
+      if (error.isJoi == true) error.status = 422;
+      next(error);
+    }
+  },
 };
