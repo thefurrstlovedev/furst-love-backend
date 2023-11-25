@@ -221,7 +221,7 @@ module.exports = {
 
         if (customerObj != null) {
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: cart[0].totalPayable * 100,
+            amount: Math.round(cart[0].totalPayable * 100),
             currency: "eur",
             automatic_payment_methods: {
               enabled: true,
@@ -487,7 +487,7 @@ module.exports = {
 
         if (customerObj != null) {
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: cart[0].totalPayable * 100,
+            amount: Math.round(cart[0].totalPayable * 100),
             currency: "eur",
             automatic_payment_methods: {
               enabled: true,
