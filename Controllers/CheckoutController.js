@@ -505,7 +505,15 @@ module.exports = {
               totalPayable: cart[0].totalPayable,
               couponId: couponId,
               shippingCharges: cart[0].shippingCharges,
-              address: validated.address,
+              session: true,
+              name: validated.address.name,
+              contact: validated.address.contact,
+              pincode: validated.address.pincode,
+              state: validated.address.state,
+              city: validated.address.city,
+              houseInfo: validated.address.houseInfo,
+              streetName: validated.address.streetName,
+              country: validated.address.country,
             },
           });
 

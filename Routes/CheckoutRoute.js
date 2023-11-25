@@ -8,14 +8,12 @@ router.post(
   [verifyAccessToken],
   checkoutController.checkout
 );
-
+router.get("/config", [verifyAccessToken], checkoutController.config);
 router.post(
   "/create-payment-intent/session",
-  [verifyAccessToken],
   checkoutController.sessionCheckout
 );
 
-router.get("/config", [verifyAccessToken], checkoutController.config);
-router.get("/config/session", [verifyAccessToken], checkoutController.config);
+router.get("/config/session", checkoutController.sessionConfig);
 
 module.exports = router;

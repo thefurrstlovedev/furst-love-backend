@@ -11,9 +11,6 @@ require("./Helpers/initMongodb");
 const cron = require("node-cron");
 const { verifyAccessToken } = require("./Helpers/jwtHelper");
 const cors = require("cors");
-// const session = require("express-session");
-//const cookieParser = require("cookie-parser");
-// const MongoStore = require("connect-mongo");
 const AuthRoute = require("./Routes/AuthRoute");
 const ProductRoute = require("./Routes/ProductRoute");
 const CartRoute = require("./Routes/CartRoute");
@@ -24,7 +21,6 @@ const EmailSubcriptionRoute = require("./Routes/EmailSubscriptionRoute");
 const EnquiryRoute = require("./Routes/EnquiryRoute");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
-// app.use(cookieParser());
 app.use(morgan("dev")); // Used for logging all request in console
 
 app.use("/webhook", express.raw({ type: "*/*" }));
@@ -37,21 +33,6 @@ app.use(
     origin: "*",
   })
 );
-
-// app.use(
-//   session({
-//     secret: process.env.SESSION_SECRET,
-//     store: MongoStore.create({
-//       mongoUrl: process.env.MONGO_URL,
-//       collectionName: "sessions",
-//       stringify: false,
-//       autoRemove: true,
-//     }),
-//     saveUninitialized: true,
-//     resave: false,
-//     cookie: { maxAge: 3600000, sameSite: true, secure: false },
-//   })
-// );
 
 cron.schedule(
   "0 5 * * *",
@@ -95,19 +76,18 @@ app.post(
       case "payment_intent.created":
         const paymentIntentCreated = event.data.object;
         console.log(`Payment Intent Created ${paymentIntentCreated["id"]}`);
-
         break;
 
       case "payment_intent.succeeded":
         const paymentIntentSucceeded = event.data.object;
-
         stripe.customers
           .retrieve(paymentIntentSucceeded.customer)
           .then(async (customer) => {
             console.log(`Here comes the 💰💰💰💰💰💰`);
 
-            if (paymentIntentSucceeded.metadata.address) {
-              console.log("Address found it must be a session user");
+            if (paymentIntentSucceeded.metadata.session === "true") {
+              console.log("session found it must be a session user");
+
               const cart = await Cart.aggregate([
                 {
                   $match: {
@@ -272,14 +252,14 @@ app.post(
                 paymentIntentSucceeded.metadata.shippingCharges;
 
               order.shippingInfo = {
-                name: paymentIntentSucceeded.address.name,
-                contact: paymentIntentSucceeded.address.contact,
-                pincode: paymentIntentSucceeded.address.pincode,
-                state: paymentIntentSucceeded.address.state,
-                city: paymentIntentSucceeded.address.city,
-                houseInfo: paymentIntentSucceeded.address.houseInfo,
-                streetName: paymentIntentSucceeded.address.streetName,
-                country: paymentIntentSucceeded.address.country,
+                name: paymentIntentSucceeded.metadata.name,
+                contact: paymentIntentSucceeded.metadata.contact,
+                pincode: paymentIntentSucceeded.metadata.pincode,
+                state: paymentIntentSucceeded.metadata.state,
+                city: paymentIntentSucceeded.metadata.city,
+                houseInfo: paymentIntentSucceeded.metadata.houseInfo,
+                streetName: paymentIntentSucceeded.metadata.streetName,
+                country: paymentIntentSucceeded.metadata.country,
               };
 
               const savedOrder = await order.save();
@@ -469,7 +449,6 @@ app.post(
             }
           })
           .catch((err) => console.log(err.message));
-
         break;
 
       default:
