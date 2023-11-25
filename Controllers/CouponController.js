@@ -38,4 +38,16 @@ module.exports = {
       next(error);
     }
   },
+  deleteCoupon: async (req, res, next) => {
+    try {
+      await Coupon.deleteOne({ _id: req.params.id });
+      res.send({
+        status: true,
+        message: "Coupon deleted",
+      });
+    } catch (error) {
+      if (error.isJoi == true) error.status = 422;
+      next(error);
+    }
+  },
 };
