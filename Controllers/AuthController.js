@@ -135,8 +135,7 @@ module.exports = {
         throw createError.NotFound(`${req.body.email} is not registered`);
       res.json({
         status: true,
-        message: `${savedUser.email} Profile Updated`,
-        oldProfileImageLink: savedUser.profileImageUrl,
+        message: "Pet Information Saved Successfully.",
       });
     } catch (error) {
       if (error.isJoi == true) error.status = 422;
