@@ -19,6 +19,23 @@ const UserSchema = new Schema(
       type: String,
       required: [true, "Name is required"],
     },
+    petName: {
+      type: String,
+    },
+    petDOB: {
+      type: Date,
+    },
+    customerDOB: {
+      type: Date,
+    },
+    promotionalConsent: {
+      type: Boolean,
+      required: true,
+    },
+    whatsappConsent: {
+      type: Boolean,
+      required: true,
+    },
     contact: {
       type: String,
 

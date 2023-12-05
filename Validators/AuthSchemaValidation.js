@@ -13,6 +13,8 @@ const registerSchema = joi.object({
   email: joi.string().email().lowercase().required(),
   password: joi.string().min(4).required(),
   name: joi.string().required(),
+  promotionalConsent: joi.boolean().required(),
+  whatsappConsent: joi.boolean().required(),
   contact: joi.string().required(),
 });
 

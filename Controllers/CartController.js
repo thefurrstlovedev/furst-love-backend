@@ -269,6 +269,24 @@ module.exports = {
     }
   },
 
+  getSessionCartItemCount: async (req, res, next) => {
+    try {
+      const cart = await Cart.findOne({ sid: req.params.sid });
+      if (cart) {
+        res.send({
+          cartItems: cart.cartItems.length,
+        });
+      } else {
+        res.send({
+          cartItems: 0,
+        });
+      }
+    } catch (error) {
+      if (error.isJoi == true) error.status = 422;
+      next(error);
+    }
+  },
+
   //* Used to remove item from cart
   removeFromCart: async (req, res, next) => {
     try {
