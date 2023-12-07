@@ -9,6 +9,8 @@ router.post("/login", authController.login); // Implemented
 
 router.put("/add-address", [verifyAccessToken], authController.createAddress);
 
+router.put("/add-pet-info", [verifyAccessToken], authController.updateUser);
+
 router.post("/refreshToken", authController.refreshToken);
 
 router.post("/forgot", authController.forgotPassword);
