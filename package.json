@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.0",
+    "moment": "^2.29.4",
     "mongoose": "^6.9.1",
     "mongoose-id-validator": "^0.6.0",
     "morgan": "^1.10.0",

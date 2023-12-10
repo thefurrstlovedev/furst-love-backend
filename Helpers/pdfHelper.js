@@ -4,6 +4,7 @@ const Order = require("../Models/OrderModel");
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fs = require("fs");
 const ftp = require("basic-ftp");
+const moment = require("moment")
 require("jspdf-autotable");
 module.exports = {
   generateInvoice: async (receipt) => {
@@ -81,7 +82,7 @@ module.exports = {
 
     // Right-align date
     const margin = 15;
-    const date = order.createdAt;
+    const date = moment(order.createdAt).format('DD/MM/YYYY'); 
     const invoiceDateX =
       pageWidth -
       (doc.getStringUnitWidth(`Invoice Date: ${date}`) * fontSize) /
@@ -214,9 +215,9 @@ module.exports = {
 
     // Add the footer text to the PDF
     doc.text(footerText, textXFooterText, textYFooterText);
-    doc.save(`./files/${order.receipt}.pdf`);
+    doc.save(`./public/${order.receipt}.pdf`);
     return {
-      path: `./files/${order.receipt}.pdf`,
+      path: `./public/${order.receipt}.pdf`,
       orderId: order.receipt,
       email: order.shippingInfo.email,
       customerName: order.shippingInfo.name,
