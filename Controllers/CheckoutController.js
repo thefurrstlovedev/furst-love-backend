@@ -229,6 +229,7 @@ module.exports = {
             receipt_email: req.user.email,
             customer: customerObj["id"],
             metadata: {
+              email: req.user.email,
               orderDiscountAmount: cart[0].cartDiscountAmount,
               orderTotalWeight: cart[0].cartTotalWeight,
               orderOriginalAmount: cart[0].cartOriginalAmount,
@@ -495,6 +496,7 @@ module.exports = {
             receipt_email: validated.email,
             customer: customerObj["id"],
             metadata: {
+              email: validated.email,
               orderDiscountAmount: cart[0].cartDiscountAmount,
               orderTotalWeight: cart[0].cartTotalWeight,
               orderOriginalAmount: cart[0].cartOriginalAmount,

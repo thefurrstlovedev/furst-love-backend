@@ -19,6 +19,7 @@ const CheckoutRoute = require("./Routes/CheckoutRoute");
 const OrderRoute = require("./Routes/OrderRoute");
 const EmailSubcriptionRoute = require("./Routes/EmailSubscriptionRoute");
 const EnquiryRoute = require("./Routes/EnquiryRoute");
+const { generateInvoice, sendInvoice } = require("./Helpers/pdfHelper");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 app.use(morgan("dev")); // Used for logging all request in console
@@ -252,6 +253,7 @@ app.post(
                 paymentIntentSucceeded.metadata.shippingCharges;
 
               order.shippingInfo = {
+                email: paymentIntentSucceeded.metadata.email,
                 name: paymentIntentSucceeded.metadata.name,
                 contact: paymentIntentSucceeded.metadata.contact,
                 pincode: paymentIntentSucceeded.metadata.pincode,
@@ -264,6 +266,9 @@ app.post(
 
               const savedOrder = await order.save();
               await Cart.deleteOne({ sid: customer.metadata.userId });
+              const { path, orderId, email, customerName } =
+                await generateInvoice(savedOrder.receipt);
+              await sendInvoice(path, orderId, email, customerName);
             } else {
               console.log("Address not found it must be a logged in user");
               const localUser = await User.findOne({
@@ -434,6 +439,7 @@ app.post(
                 paymentIntentSucceeded.metadata.shippingCharges;
 
               order.shippingInfo = {
+                email: localUser.email,
                 name: localUser.addresses[0].name,
                 contact: localUser.addresses[0].contact,
                 pincode: localUser.addresses[0].pincode,
@@ -446,6 +452,9 @@ app.post(
 
               const savedOrder = await order.save();
               await Cart.deleteOne({ _id: localUser._id });
+              const { path, orderId, email, customerName } =
+                await generateInvoice(savedOrder.receipt);
+              await sendInvoice(path, orderId, email, customerName);
             }
           })
           .catch((err) => console.log(err.message));
