@@ -21,94 +21,83 @@ module.exports = {
     const fontSize = 11;
     const logoWidth = 30;
     const logoHeight = 30;
-    const centerX = (doc.internal.pageSize.getWidth() - logoWidth) / 2;
+    // const centerX = (doc.internal.pageSize.getWidth() - logoWidth) / 2;
 
-    doc.addImage(imageData, "PNG", centerX, 10, logoWidth, logoHeight, "FAST");
-    const textCompanyName = "The Furrst Love - Dattaram Gawde";
-    const textCompanyAddress =
-      "7 Rue Jean-Pierre Bierman, Valerie 4, Luxembourg/Cents, L-1268, Luxembourg";
-    const textContactNumber = "Phone: +352 691971 959 / +352 691 123 253";
-    const textEmail = "Email: info@thefurrstlove.com";
+    doc.addImage(imageData, "PNG", 15, 10, logoWidth, logoHeight, "FAST");
 
-    const textWidthCompanyName =
-      (doc.getStringUnitWidth(textCompanyName) * fontSize) /
-      doc.internal.scaleFactor;
-    const textXCompanyName =
-      (doc.internal.pageSize.getWidth() - textWidthCompanyName) / 2;
-
-    const textWidthCompanyAddress =
-      (doc.getStringUnitWidth(textCompanyAddress) * fontSize) /
-      doc.internal.scaleFactor;
-    const textXCompanyAddress =
-      (doc.internal.pageSize.getWidth() - textWidthCompanyAddress) / 2;
-
-    const textWidthContactNumber =
-      (doc.getStringUnitWidth(textContactNumber) * fontSize) /
-      doc.internal.scaleFactor;
-    const textXContactNumber =
-      (doc.internal.pageSize.getWidth() - textWidthContactNumber) / 2;
-
-    const textWidthEmail =
-      (doc.getStringUnitWidth(textEmail) * fontSize) / doc.internal.scaleFactor;
-    const textXEmail = (doc.internal.pageSize.getWidth() - textWidthEmail) / 2;
-
-    doc.setFontSize(fontSize);
-    doc.text(textCompanyName, textXCompanyName, 50);
-    doc.text(textCompanyAddress, textXCompanyAddress, 55);
-    doc.text(textContactNumber, textXContactNumber, 60);
-    doc.text(textEmail, textXEmail, 65);
+    const textAuthorizationNo = 'Authorization No.: 10155601/0';
+    
+    doc.setFontSize(fontSize);  
+    doc.setFont('helvetica', 'bold');
+    doc.text(textAuthorizationNo, 15, 50);
 
     // Calculate the width of the text
     doc.setFont("helvetica", "bold");
-    const fontSizeInvoice = 18;
+    const fontSizeInvoice = 28;
+    const textInvoiceMargin = 15;
     const textInvoice = "Invoice";
-    const textWidthInvoice =
-      (doc.getStringUnitWidth(textInvoice) * fontSizeInvoice) /
-      doc.internal.scaleFactor;
-    const textX = (doc.internal.pageSize.getWidth() - textWidthInvoice) / 2;
+    const textWidthInvoice = pageWidth - doc.getStringUnitWidth(textInvoice) * fontSizeInvoice / doc.internal.scaleFactor - textInvoiceMargin;
+    // Set the text color before drawing the text
+    doc.setTextColor(235, 69, 151); // RGB color, e.g., red
     doc.setFontSize(fontSizeInvoice);
-    doc.text(textInvoice, textX, 75);
+    doc.text(textWidthInvoice, 30, `Invoice`);
+
+    // Reset the text color to default (black) if needed
+    doc.setTextColor(0, 0, 0); // Reset to black
 
     // Add the centered text to the PDF
     doc.setFontSize(fontSize);
-    // Add content to the PDF
-    // Left-align outward number
-    doc.setFont("helvetica", "bold");
-    doc.text(15, 85, `Customer Details`);
-    doc.setFont("helvetica", "normal");
-    doc.text(15, 90, order.shippingInfo.name);
-    doc.text(15, 95, order.shippingInfo.contact);
-    doc.text(15, 100, order.shippingInfo.email);
 
+    doc.setFont('helvetica', 'normal');
     // Right-align date
     const margin = 15;
     const date = moment(order.createdAt).format('DD/MM/YYYY'); 
-    const invoiceDateX =
-      pageWidth -
-      (doc.getStringUnitWidth(`Invoice Date: ${date}`) * fontSize) /
-        doc.internal.scaleFactor -
-      margin;
-    doc.text(invoiceDateX, 85, `Invoice Date: ${date}`);
+    const invoiceDateX = pageWidth - doc.getStringUnitWidth(`Invoice Date: ${date}`) * fontSize / doc.internal.scaleFactor  - margin;
+    doc.text(invoiceDateX, 50, `Invoice Date: ${date}`);
+
+    // Add a horizontal line
+    const lineY = 55; // Adjust the Y-coordinate as needed
+    doc.setLineWidth(0.2); // Set line width
+    doc.line(15, lineY, pageWidth - 15, lineY); // Draw the line
+    
+    // Add content to the PDF
+    const billFromX = 15;
+    doc.setFont('helvetica', 'bold');
+    doc.text(billFromX, 65, `Bill From:`);
+    doc.setFont('helvetica', 'normal');
+    doc.text(billFromX, 70, `Dattaram Gawde (Proprietor)`);
+    doc.text(billFromX, 75, `The Furrst Love`);
+    doc.text(billFromX, 80, `7 Rue Jean-Pierre Bierman, Cents,`);
+    doc.text(billFromX, 85, `L-1268, Luxembourg`);
+    doc.text(billFromX, 90, `+352 691 371 959`);
+    doc.text(billFromX, 95, `info@thefurrstlove.com`);
+
+    // Calculate the width of the "Bill From" section
+    const billFromWidth = doc.getStringUnitWidth("Bill From:") * fontSize / doc.internal.scaleFactor;
+    // Move "Bill To" section to the right side of "Bill From" section
+    const billToX = billFromX + billFromWidth + 70; // Adjust the value based on your layout
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(billToX, 65, `Bill To:`);
+    doc.setFont('helvetica', 'normal');
+    doc.text(billToX, 70, order.shippingInfo.name);
+    doc.text(billToX, 75, order.shippingInfo.contact);
+    doc.text(billToX, 80, order.shippingInfo.email);
+    doc.text(billToX, 85, order.shippingInfo.houseInfo);
+    doc.text(billToX, 90, order.shippingInfo.streetName);
+    doc.text(billToX, 95, order.shippingInfo.city);
+    doc.text(billToX, 100, order.shippingInfo.state);
+    doc.text(billToX, 105, order.shippingInfo.country);
+    doc.text(billToX, 110, order.shippingInfo.pincode);
+
 
     doc.setFont("helvetica", "bold");
-    doc.text(15, 110, `Shipping Details`);
+    doc.text(15, 125, `Order Number`);
     doc.setFont("helvetica", "normal");
-    doc.text(15, 115, order.shippingInfo.name);
-    doc.text(15, 120, order.shippingInfo.contact);
-    doc.text(15, 125, order.shippingInfo.houseInfo);
-    doc.text(15, 130, order.shippingInfo.streetName);
-    doc.text(15, 135, order.shippingInfo.city);
-    doc.text(15, 140, order.shippingInfo.state);
-    doc.text(15, 145, order.shippingInfo.country);
-    doc.text(15, 150, order.shippingInfo.pincode);
+    doc.text(15, 130, order.receipt);
 
     doc.setFont("helvetica", "bold");
-    doc.text(15, 160, `Order Number`);
-    doc.setFont("helvetica", "normal");
-    doc.text(15, 165, order.receipt);
-
-    doc.setFont("helvetica", "bold");
-    doc.text(15, 175, `Product Details`);
+    doc.text(15, 140, `Product Details`);
 
     // Define the columns for the table
     const columns = [
@@ -141,7 +130,7 @@ module.exports = {
           columns.map((column) => product[column.dataKey])
         ),
       ], // Ensure products data is correctly formatted
-      startY: 180,
+      startY: 145,
       theme: "plain", // Use a plain theme (no borders)
       styles: {
         fontSize: 10,
@@ -183,7 +172,7 @@ module.exports = {
     const StartYFinalValuesTable = productsTable.lastAutoTable.finalY + 5;
     // console.log(finalValuesTableStartY);
 
-    doc.autoTable({
+  doc.autoTable({
       body: finalValuesTable, // Ensure products data is correctly formatted
       startY: StartYFinalValuesTable,
       theme: "plain", // Use a plain theme (no borders)
@@ -194,6 +183,53 @@ module.exports = {
         lineWidth: 0.2, // Width of the table lines
       },
     });
+
+  const termsAndConditionsFontSize = 8;
+  const rightMargin = 15;
+
+  const textTermsAndConditions = `Terms & Conditions:
+  \nCompany Details:
+  \nThe Furrst Love is a commercial name of the company owned by Dattaram Gawde – The Furrst Love having its registered office at 7 Rue Jean Pierre Biermann in Luxembourg. Authorization No.: 10155601/0
+  \nUse of Personal Data:
+  \nThe Furrst Love use your personal information to provide our service to you, which includes: offering products for sale, processing payments, shipping and fulfilment of your order, keeping you up to date on new products, services and offers. When you place an order through our Website/Email, you agree to provide us with your email address, postal address, and/or other contact details truthfully and exactly. You also agree that we may use this information to contact you in the context of your order if it is necessary. We respect your right to privacy.
+  \nCancellation and Refund Policy:
+  \nReturns:
+  \nDue to the custom nature of all of the products we produce at The Furrst Love, we are unable to offer returns.
+  \nCancellation:
+  \nOnce The Furrst Love has e-mailed the order confirmation to the customer and “art-work” has been approved by the customer, no further amendment to the products ordered can be requested. If, exceptionally, The Furrst Love should agree to such an amendment after sending the order confirmation, a new order - cancelling the previous one - shall need to be placed by the customer.
+  \nThe Furrst Love shall be entitled to claim reimbursement from the customer for the expenses incurred as a result of the cancellation of the original order, amounting to 20% of the order total.
+  \nThe Furrst Love reserves the right to refuse or cancel any order or delivery in the event of:
+  \nI. Total or partial non-payment by the customer of a previous order (even if the new order is paid for by credit card or bank transfer)
+  \nII. Dispute between the customer and The Furrst Love
+  \nIII. Refusal of the credit card payment by the banking institutions. In this event, The Furrst Love cannot under any circumstance be held liable.
+  \nComplaints:
+  \nAny complaint concerning the goods and work carried out by The Furrst Love must reach us by registered letter within 7 working days following their reception or via email info@thefurrstlove.com.
+  \nDelivery:
+  \nThe delivery date is given as an indication. The transport costs are chargeable to the customer, except if contrary mention on the order form.
+  \nColors and Size:
+  \nThe colors of the projects are given as an indication and we cannot guarantee an absolute similarity of the execution, although we always try to get as close as possible. Due to the customized nature of the products, size once selected by the customer, cannot be modified.
+  \nCopyright Infringement:
+  \nOur customers are supposed to have the right to reproduce documents, logos, images of persons. The Furrst Love explicitly refuses any responsibility towards possible third parties having right in case of reproduction or illicit diffusion. This concerns in particular the laws of copyright, the protection of industrial secret.`;
+
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(termsAndConditionsFontSize);
+
+  // doc.text(textTermsAndConditions, 15, startYTermsAndConditions, );
+
+  // Combine all terms and conditions into a single string
+  // const allTermsAndConditionsText = `${textTermsAndConditions}`;
+  const textWidth = doc.getStringUnitWidth(textTermsAndConditions) * termsAndConditionsFontSize;
+
+  // Check if the content fits on the current page, otherwise add a new page
+  if (doc.internal.pageSize.width - textWidth < 15) {
+    doc.addPage();
+  }
+
+  // Add the terms and conditions to the PDF
+  doc.text(15, 20, textTermsAndConditions, { maxWidth: doc.internal.pageSize.width - 15 - rightMargin });
+    
+
 
     // Add a footer with the current date
     const footerText = "*** This is computer generated invoice. ***";
