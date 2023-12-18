@@ -110,28 +110,13 @@ module.exports = {
   createProductReview: async (req, res, next) => {
     try {
       const validated = await ReviewSchema.validateAsync(req.body);
+      const product = await Product.findById(validated.product);
 
-      validated.user = req.user._id;
-      validated.name = req.user.name;
-      const product = await Product.findById(validated.productId);
-
-      const review = await Review.findOneAndUpdate(
-        {
-          productId: validated.productId,
-          user: validated.user,
-        },
-        {
-          $set: {
-            rating: validated.rating,
-            comment: validated.comment,
-            name: validated.name,
-          },
-        },
-        { upsert: true, new: true }
-      ).lean();
+      const review = new Review(validated);
+      await review.save();
 
       const reviews = await Review.find({
-        productId: validated.productId,
+        product: validated.product,
       }).lean();
 
       delete review.__v;
@@ -148,6 +133,35 @@ module.exports = {
       res.json({
         success: true,
         message: "Review submitted",
+      });
+    } catch (error) {
+      if (error.isJoi == true) error.status = 422;
+      next(error);
+    }
+  },
+
+  deleteReview: async (req, res, next) => {
+    try {
+      const reviewId = req.params.id;
+      const review = await Review.findOne({ _id: reviewId });
+      const product = await Product.findById(review.product);
+
+      await Review.findOneAndDelete({ _id: review._id });
+      const reviews = await Review.find({
+        product: product._id,
+      }).lean();
+
+      let avg = 0;
+
+      reviews.forEach((rev) => {
+        avg += rev.rating;
+      });
+      product.rating = avg / reviews.length;
+      product.numOfReviews = reviews.length;
+      await product.save();
+      res.json({
+        success: true,
+        message: "Review deleted!",
       });
     } catch (error) {
       if (error.isJoi == true) error.status = 422;

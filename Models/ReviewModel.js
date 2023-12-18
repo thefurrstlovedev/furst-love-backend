@@ -4,12 +4,7 @@ var idValidator = require("mongoose-id-validator");
 
 const ReviewSchema = new Schema(
   {
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: "user",
-      required: true,
-    },
-    productId: {
+    product: {
       type: Schema.Types.ObjectId,
       ref: "product",
       required: true,
@@ -17,6 +12,7 @@ const ReviewSchema = new Schema(
 
     images: {
       type: [String],
+      required: true,
     },
 
     name: {
@@ -30,6 +26,12 @@ const ReviewSchema = new Schema(
     comment: {
       type: String,
       required: true,
+    },
+    message: {
+      type: String,
+    },
+    location: {
+      type: String,
     },
   },
   { timestamps: true }

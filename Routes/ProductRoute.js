@@ -7,10 +7,11 @@ router.get("/all", [verifyAccessToken], productController.getProducts);
 router.get("/explore/all", productController.exploreProducts);
 router.get("/explore/:id", productController.exploreProductDetails);
 router.get("/:id", productController.getProductDetails);
-router.put(
-  "/review",
-  [verifyAccessToken],
-  productController.createProductReview
+router.put("/review", productController.createProductReview);
+router.delete(
+  "/review/:id",
+  [verifyAccessToken, isAdmin],
+  productController.deleteReview
 );
 router.post(
   "/admin",
