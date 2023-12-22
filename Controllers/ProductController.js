@@ -140,6 +140,16 @@ module.exports = {
     }
   },
 
+  getAllProductReviews: async (req, res, next) => {
+    try {
+      const reviews = await Review.find().populate("product", "name");
+      res.json(reviews);
+    } catch (error) {
+      if (error.isJoi == true) error.status = 422;
+      next(error);
+    }
+  },
+
   deleteReview: async (req, res, next) => {
     try {
       const reviewId = req.params.id;

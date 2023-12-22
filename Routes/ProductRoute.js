@@ -8,6 +8,7 @@ router.get("/explore/all", productController.exploreProducts);
 router.get("/explore/:id", productController.exploreProductDetails);
 router.get("/:id", productController.getProductDetails);
 router.put("/review", productController.createProductReview);
+router.get("/review/all", productController.getAllProductReviews);
 router.delete(
   "/review/:id",
   [verifyAccessToken, isAdmin],
