@@ -33,6 +33,9 @@ const ReviewSchema = new Schema(
     location: {
       type: String,
     },
+    email: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

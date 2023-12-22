@@ -8,6 +8,7 @@ const ReviewSchema = joi.object({
   images: joi.array().items(joi.string()).required(),
   message: joi.string(),
   location: joi.string(),
+  email: joi.string(),
 });
 module.exports = {
   ReviewSchema,
